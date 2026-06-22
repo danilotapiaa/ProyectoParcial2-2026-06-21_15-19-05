@@ -4,18 +4,15 @@ using UnityEngine.AI;
 
 public class EnemigoIA : NetworkBehaviour
 {
-    public NavMeshAgent agente;
-    public Animator anim;
+    private NavMeshAgent agente;
+    private Animator anim;
     public float rangoAtaque = 2.5f;
-
-    private enum Estado { Patrullando, Persiguiendo }
-    private Estado estadoActual = Estado.Patrullando;
 
     void Start()
     {
-        // Auto-asignación para que no salgan errores de referencia
-        if (agente == null) agente = GetComponent<NavMeshAgent>();
-        if (anim == null) anim = GetComponent<Animator>();
+        // Auto-asignación para evitar errores de referencia
+        agente = GetComponent<NavMeshAgent>();
+        anim = GetComponent<Animator>();
     }
 
     void Update()
@@ -26,18 +23,20 @@ public class EnemigoIA : NetworkBehaviour
 
         if (jugador != null)
         {
-            estadoActual = Estado.Persiguiendo;
             agente.SetDestination(jugador.transform.position);
+            float dist = Vector3.Distance(transform.position, jugador.transform.position);
+
+            // Animación de correr
             anim.SetFloat("Speed", agente.velocity.magnitude);
 
-            if (Vector3.Distance(transform.position, jugador.transform.position) <= rangoAtaque)
+            // Ataque
+            if (dist <= rangoAtaque)
             {
                 anim.SetTrigger("Attack");
             }
         }
         else
         {
-            estadoActual = Estado.Patrullando;
             anim.SetFloat("Speed", 0);
         }
     }

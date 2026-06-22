@@ -25517,8 +25517,8 @@ NavMeshAgent:
   m_Enabled: 1
   m_AgentTypeID: 0
   m_Radius: 0.5
-  m_Speed: 1.5
-  m_Acceleration: 8
+  m_Speed: 2
+  m_Acceleration: 20
   avoidancePriority: 50
   m_AngularSpeed: 120
   m_StoppingDistance: 0
@@ -25542,9 +25542,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: '::'
   ShowTopMostFoldoutHeaderGroup: 1
-  agente: {fileID: 0}
-  anim: {fileID: 0}
-  rangoAtaque: 2.5
+  rangoAtaque: 3
 --- !u!114 &826870099
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -66377,7 +66375,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a3fbfc1e752ad284b90a2e9bb5cffd64, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::HitboxAtaque
-  "da\xF1o": 20
+  cooldown: 1
 --- !u!65 &2114414731
 BoxCollider:
   m_ObjectHideFlags: 0

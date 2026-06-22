@@ -3,11 +3,14 @@ using Unity.Netcode;
 
 public class HitboxAtaque : MonoBehaviour
 {
-    private float cooldown = 1.0f;
+    public float cooldown = 1.5f;
     private float tiempoSiguienteGolpe = 0f;
 
     private void OnTriggerStay(Collider other)
     {
+        // CORRECCIÓN: Primero verificamos si el NetworkManager existe para evitar el NullReferenceException
+        if (NetworkManager.Singleton == null || !NetworkManager.Singleton.IsServer) return;
+
         if (other.CompareTag("Player") && Time.time > tiempoSiguienteGolpe)
         {
             ControladorJugadorRed salud = other.GetComponent<ControladorJugadorRed>();
@@ -15,7 +18,6 @@ public class HitboxAtaque : MonoBehaviour
             {
                 salud.RecibirDanio(20);
                 tiempoSiguienteGolpe = Time.time + cooldown;
-                Debug.Log("¡Golpeaste al jugador! Daño aplicado.");
             }
         }
     }
