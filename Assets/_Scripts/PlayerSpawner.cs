@@ -3,12 +3,13 @@ using UnityEngine;
 
 public class PlayerSpawner : NetworkBehaviour
 {
-    public GameObject jugadorPrefab; // Asignar tu prefab de jugador
+    public GameObject jugadorPrefab;
 
     private Vector3[] posicionesSpawn = new Vector3[]
     {
-        new Vector3(-25f, 0.1f, 50f),  // Posición 1 para Host
-        new Vector3(-20f, 0.1f, 50f)   // Posición 2 para Cliente
+        new Vector3(-25f, 0.1f, 50f),  // Posición para Host
+        new Vector3(-20f, 0.1f, 50f),  // Posición para Cliente 1
+        new Vector3(-15f, 0.1f, 50f)   // Posición para Cliente 2
     };
 
     private int clientesConectados = 0;
@@ -17,11 +18,14 @@ public class PlayerSpawner : NetworkBehaviour
     {
         if (!IsServer) return;
 
-        // Cuando se conecta un cliente, spawn un jugador para él
-        NetworkManager.Singleton.OnClientConnectedCallback += SpawnJugador;
+        // PRIMERO: Spawnear al Host inmediatamente
+        SpawnJugadorLocal(NetworkManager.ServerClientId);
+
+        // LUEGO: Escuchar cuando se conecten clientes
+        NetworkManager.Singleton.OnClientConnectedCallback += SpawnJugadorRemoto;
     }
 
-    private void SpawnJugador(ulong clientId)
+    private void SpawnJugadorLocal(ulong clientId)
     {
         if (jugadorPrefab == null)
         {
@@ -29,7 +33,7 @@ public class PlayerSpawner : NetworkBehaviour
             return;
         }
 
-        Vector3 posicion = posicionesSpawn[Mathf.Min(clientesConectados, 1)];
+        Vector3 posicion = posicionesSpawn[Mathf.Min(clientesConectados, posicionesSpawn.Length - 1)];
 
         GameObject nuevoJugador = Instantiate(jugadorPrefab, posicion, Quaternion.identity);
         NetworkObject networkObject = nuevoJugador.GetComponent<NetworkObject>();
@@ -40,18 +44,46 @@ public class PlayerSpawner : NetworkBehaviour
             return;
         }
 
-        // ¡IMPORTANTE! Spawnearlo en red y asignarlo al cliente específico
         networkObject.SpawnAsPlayerObject(clientId, true);
-
         clientesConectados++;
-        Debug.Log($"✅ Jugador spawneado para cliente {clientId} en posición {posicion}");
+
+        Debug.Log($"✅ HOST spawneado en posición {posicion}");
+    }
+
+    private void SpawnJugadorRemoto(ulong clientId)
+    {
+        if (jugadorPrefab == null)
+        {
+            Debug.LogError("PlayerSpawner: jugadorPrefab no está asignado!");
+            return;
+        }
+
+        // NO spawnear al servidor de nuevo
+        if (clientId == NetworkManager.ServerClientId)
+            return;
+
+        Vector3 posicion = posicionesSpawn[Mathf.Min(clientesConectados, posicionesSpawn.Length - 1)];
+
+        GameObject nuevoJugador = Instantiate(jugadorPrefab, posicion, Quaternion.identity);
+        NetworkObject networkObject = nuevoJugador.GetComponent<NetworkObject>();
+
+        if (networkObject == null)
+        {
+            Debug.LogError("PlayerSpawner: El prefab no tiene NetworkObject!");
+            return;
+        }
+
+        networkObject.SpawnAsPlayerObject(clientId, true);
+        clientesConectados++;
+
+        Debug.Log($"✅ CLIENTE {clientId} spawneado en posición {posicion}");
     }
 
     public override void OnNetworkDespawn()
     {
         if (IsServer && NetworkManager.Singleton != null)
         {
-            NetworkManager.Singleton.OnClientConnectedCallback -= SpawnJugador;
+            NetworkManager.Singleton.OnClientConnectedCallback -= SpawnJugadorRemoto;
         }
         base.OnNetworkDespawn();
     }
