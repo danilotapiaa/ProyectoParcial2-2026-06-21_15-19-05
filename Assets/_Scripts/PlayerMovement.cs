@@ -1,27 +1,24 @@
 using Unity.Netcode;
 using UnityEngine;
+using UnityEngine.InputSystem;
 
 public class PlayerMovement : NetworkBehaviour
 {
     [Header("Movimiento")]
-    public float moveSpeed = 5f;
-    public float rotationSpeed = 120f;
-    public float groundDrag = 5f;
+    public float velocidadMovimiento = 5.0f;
+    public float velocidadRotacion = 360.0f;
 
-    [Header("Colisión")]
-    public float collisionDistance = 0.5f;
+    [Header("Colisiones")]
+    public LayerMask capaSuelo;
 
     private Rigidbody rb;
-    private Vector3 moveDirection;
-    private bool isGrounded;
+    private float inputXRaw = 0f;
+    private float inputYRaw = 0f;
+    private Vector3 direccionMovimientoActual = Vector3.zero;
 
     void Start()
     {
         rb = GetComponent<Rigidbody>();
-        if (rb == null)
-        {
-            rb = gameObject.AddComponent<Rigidbody>();
-        }
     }
 
     void Update()
@@ -29,82 +26,55 @@ public class PlayerMovement : NetworkBehaviour
         // ¡CRÍTICO! Solo el DUEÑO de este jugador puede moverlo
         if (!IsOwner) return;
 
-        // Detectar si está en el suelo
-        isGrounded = Physics.Raycast(transform.position + Vector3.up * 0.1f, Vector3.down, 0.3f);
+        // Capturar entrada EXACTAMENTE como en movimiento.cs
+        Vector2 entradaTeclado = Vector2.zero;
+        var teclado = Keyboard.current;
 
-        // Capturar entrada WASD
-        float moveInput = Input.GetAxis("Vertical");   // W/S o Flechas arriba/abajo
-        float turnInput = Input.GetAxis("Horizontal");  // A/D o Flechas izquierda/derecha
-
-        // Calcular dirección relativa al jugador
-        moveDirection = transform.forward * moveInput + transform.right * turnInput;
-        if (moveDirection.magnitude > 1f) moveDirection.Normalize();
-
-        // Aplicar fricción
-        if (rb != null)
+        if (teclado != null)
         {
-            rb.linearDamping = isGrounded ? groundDrag : 0;
+            if (teclado.wKey.isPressed || teclado.upArrowKey.isPressed) entradaTeclado.y = 1f;
+            if (teclado.sKey.isPressed || teclado.downArrowKey.isPressed) entradaTeclado.y = -1f;
+            if (teclado.dKey.isPressed || teclado.rightArrowKey.isPressed) entradaTeclado.x = 1f;
+            if (teclado.aKey.isPressed || teclado.leftArrowKey.isPressed) entradaTeclado.x = -1f;
         }
 
-        // Rotación (girar siempre que presiones teclas)
-        if (Mathf.Abs(turnInput) > 0.01f)
-        {
-            float turn = turnInput * rotationSpeed * Time.deltaTime;
-            transform.rotation *= Quaternion.Euler(0, turn, 0);
-        }
+        Vector3 direccionMovimiento = new Vector3(entradaTeclado.x, 0.0f, entradaTeclado.y);
+        if (direccionMovimiento.sqrMagnitude > 1f) direccionMovimiento.Normalize();
 
-        // IMPORTANTE: Sincronizar movimiento con el servidor
-        if (IsServer)
-        {
-            // El Host mueve localmente
-            MoverLocalmente();
-        }
-        else
-        {
-            // El Cliente pide al servidor que lo mueva
-            RequestMoveServerRpc(moveDirection);
-        }
+        inputXRaw = entradaTeclado.x;
+        inputYRaw = entradaTeclado.y;
+
+        Vector3 forward = transform.forward;
+        Vector3 right = transform.right;
+
+        direccionMovimientoActual = forward * inputYRaw + right * inputXRaw;
+        if (direccionMovimientoActual.sqrMagnitude > 1f) direccionMovimientoActual.Normalize();
     }
 
-    private void MoverLocalmente()
+    void FixedUpdate()
     {
-        if (rb == null || moveDirection.magnitude < 0.01f) return;
+        if (!IsOwner) return;
 
-        Vector3 movimiento = moveDirection * moveSpeed * Time.deltaTime;
-
-        // Verificar colisión antes de moverse
-        if (!HayColision(movimiento))
+        if (direccionMovimientoActual.sqrMagnitude > 0.000001f)
         {
-            rb.MovePosition(rb.position + movimiento);
+            float fixedDt = Time.fixedDeltaTime;
+            Vector3 desplazamiento = direccionMovimientoActual * velocidadMovimiento * fixedDt;
+
+            if (rb != null)
+            {
+                rb.MovePosition(rb.position + desplazamiento);
+
+                if (inputYRaw >= 0)
+                {
+                    Quaternion rotacionObjetivo = Quaternion.LookRotation(direccionMovimientoActual);
+                    rb.MoveRotation(Quaternion.RotateTowards(rb.rotation, rotacionObjetivo, velocidadRotacion * fixedDt));
+                }
+                else if (Mathf.Abs(inputXRaw) > 0.01f)
+                {
+                    float giro = inputXRaw * velocidadRotacion * fixedDt;
+                    rb.MoveRotation(rb.rotation * Quaternion.Euler(0, giro, 0));
+                }
+            }
         }
-    }
-
-    [Rpc(SendTo.Server, InvokePermission = RpcInvokePermission.Owner)]
-    private void RequestMoveServerRpc(Vector3 direccion)
-    {
-        if (!IsServer) return;
-
-        moveDirection = direccion;
-        MoverLocalmente();
-
-        // Sincronizar a todos los clientes
-        SincronizarPosicionClientRpc(transform.position, transform.rotation);
-    }
-
-    [ClientRpc]
-    private void SincronizarPosicionClientRpc(Vector3 posicion, Quaternion rotacion)
-    {
-        // Los clientes ven la posición actualizada
-        if (!IsOwner)
-        {
-            transform.position = posicion;
-            transform.rotation = rotacion;
-        }
-    }
-
-    private bool HayColision(Vector3 movimiento)
-    {
-        Vector3 dirNormalizada = movimiento.normalized;
-        return Physics.Raycast(transform.position, dirNormalizada, collisionDistance);
     }
 }
