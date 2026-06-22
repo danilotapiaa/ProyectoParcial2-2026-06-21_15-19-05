@@ -9,8 +9,6 @@ public class DungeonManager : NetworkBehaviour
     public GameObject puertaCerrada;
     public GameObject puertaAbierta;
     public GameObject zonaVictoria;
-
-    // Nueva variable para la interfaz
     public GameObject panelVictoria;
 
     private void Awake()
@@ -24,6 +22,7 @@ public class DungeonManager : NetworkBehaviour
         if (!IsServer) return;
 
         llavesRecogidas.Value++;
+        Debug.Log($"🔑 Llave recogida! Total: {llavesRecogidas.Value}/5");
 
         if (llavesRecogidas.Value >= 5)
         {
@@ -34,29 +33,34 @@ public class DungeonManager : NetworkBehaviour
     [ClientRpc]
     private void AbrirPuertaClientRpc()
     {
+        Debug.Log("🚪 ¡La puerta se abrió!");
         if (puertaCerrada != null) puertaCerrada.SetActive(false);
         if (puertaAbierta != null) puertaAbierta.SetActive(true);
         if (zonaVictoria != null) zonaVictoria.SetActive(true);
     }
 
-    // --- NUEVA LÓGICA DE VICTORIA ---
     public void DeclararVictoria()
     {
-        if (!IsServer) return; // Solo el servidor valida la meta
-        MostrarVictoriaClientRpc(); // Le avisa a todos los clientes que ganaron
+        if (!IsServer) return;
+        MostrarVictoriaClientRpc();
     }
 
     [ClientRpc]
     private void MostrarVictoriaClientRpc()
     {
-        Debug.Log("¡Mostrando panel de victoria a los jugadores!");
+        Debug.Log("🎉 ¡VICTORIA! ¡Escapaste del laberinto!");
         if (panelVictoria != null)
         {
             panelVictoria.SetActive(true);
-
-            // Opcional: Desbloquear el cursor del mouse para que puedan salir del juego
             Cursor.lockState = CursorLockMode.None;
             Cursor.visible = true;
         }
+    }
+
+    // ===== UI ESTADO DEL JUEGO =====
+    void OnGUI()
+    {
+        GUI.Box(new Rect(Screen.width / 2 - 100, 10, 200, 60), "=== ESTADO ===");
+        GUI.Label(new Rect(Screen.width / 2 - 90, 30, 180, 25), $"🔑 Llaves: {llavesRecogidas.Value} / 5");
     }
 }
