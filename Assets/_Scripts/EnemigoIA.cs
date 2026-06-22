@@ -8,15 +8,23 @@ public class EnemigoIA : NetworkBehaviour
     private Animator anim;
     public float rangoAtaque = 2.5f;
 
+    // NUEVO: Variables para evitar que convulsione al atacar
+    public float cooldownAtaque = 1.5f;
+    private float tiempoParaSiguienteAtaque = 0f;
+
+    public NetworkVariable<float> velocidadRed = new NetworkVariable<float>(0f, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server);
+
     void Start()
     {
-        // Auto-asignación para evitar errores de referencia
         agente = GetComponent<NavMeshAgent>();
         anim = GetComponent<Animator>();
     }
 
     void Update()
     {
+        // Todos los clientes sincronizan la animación
+        anim.SetFloat("Speed", velocidadRed.Value);
+
         if (!IsServer) return;
 
         GameObject jugador = GameObject.FindGameObjectWithTag("Player");
@@ -26,18 +34,24 @@ public class EnemigoIA : NetworkBehaviour
             agente.SetDestination(jugador.transform.position);
             float dist = Vector3.Distance(transform.position, jugador.transform.position);
 
-            // Animación de correr
-            anim.SetFloat("Speed", agente.velocity.magnitude);
+            velocidadRed.Value = agente.velocity.magnitude;
 
-            // Ataque
-            if (dist <= rangoAtaque)
+            // NUEVO: Solo ataca si ya pasó su cooldown
+            if (dist <= rangoAtaque && Time.time >= tiempoParaSiguienteAtaque)
             {
-                anim.SetTrigger("Attack");
+                tiempoParaSiguienteAtaque = Time.time + cooldownAtaque; // Reinicia el cronómetro
+                AtacarClientRpc();
             }
         }
         else
         {
-            anim.SetFloat("Speed", 0);
+            velocidadRed.Value = 0f;
         }
+    }
+
+    [ClientRpc]
+    private void AtacarClientRpc()
+    {
+        anim.SetTrigger("Attack");
     }
 }
