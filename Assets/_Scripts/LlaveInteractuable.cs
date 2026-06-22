@@ -16,7 +16,13 @@ public class LlaveInteractuable : NetworkBehaviour
             yaRecogida = true; // Bloqueamos la llave para que no se recoja dos veces
             Debug.Log("¡Llave recogida en el servidor correctamente!");
 
-            // Usamos Despawn(false) para quitarla de la red sin destruirla, quitando la advertencia amarilla
+            // Le avisamos al Gestor que sume una llave (¡AQUÍ ES DONDE IBA!)
+            if (DungeonManager.Instance != null)
+            {
+                DungeonManager.Instance.RegistrarLlave();
+            }
+
+            // Usamos Despawn(false) para quitarla de la red sin destruirla
             GetComponent<NetworkObject>().Despawn(false);
 
             // La apagamos visualmente para que desaparezca de la escena
