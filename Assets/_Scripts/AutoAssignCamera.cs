@@ -1,3 +1,4 @@
+using Unity.Netcode;
 using UnityEngine;
 using Unity.Cinemachine;
 
@@ -7,7 +8,6 @@ public class AutoAssignCamera : MonoBehaviour
 
     void Start()
     {
-        // Actualizado para usar el nuevo nombre de componente en Cinemachine 3+
         vcam = GetComponent<CinemachineCamera>();
     }
 
@@ -15,16 +15,22 @@ public class AutoAssignCamera : MonoBehaviour
     {
         if (vcam != null && vcam.Follow == null)
         {
-            GameObject player = GameObject.FindGameObjectWithTag("Player");
-
-            if (player != null)
+            // 1. Verificamos que el multijugador esté activo y estemos conectados
+            if (NetworkManager.Singleton != null && NetworkManager.Singleton.IsConnectedClient)
             {
-                Transform cameraRoot = player.transform.Find("PlayerCameraRoot");
+                // 2. MAGIA: Obtenemos ÚNICAMENTE el personaje que nos pertenece a nosotros
+                var localPlayerObject = NetworkManager.Singleton.LocalClient.PlayerObject;
 
-                if (cameraRoot != null)
+                if (localPlayerObject != null)
                 {
-                    vcam.Follow = cameraRoot;
-                    vcam.LookAt = cameraRoot;
+                    // 3. Buscamos la raíz de la cámara dentro de NUESTRO jugador
+                    Transform cameraRoot = localPlayerObject.transform.Find("PlayerCameraRoot");
+
+                    if (cameraRoot != null)
+                    {
+                        vcam.Follow = cameraRoot;
+                        vcam.LookAt = cameraRoot;
+                    }
                 }
             }
         }
