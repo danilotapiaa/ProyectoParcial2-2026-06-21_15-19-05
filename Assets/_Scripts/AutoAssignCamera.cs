@@ -1,5 +1,5 @@
-using Unity.Netcode;
 using UnityEngine;
+using Unity.Netcode;
 using Unity.Cinemachine;
 
 public class AutoAssignCamera : MonoBehaviour
@@ -13,24 +13,24 @@ public class AutoAssignCamera : MonoBehaviour
 
     void Update()
     {
-        if (vcam != null && vcam.Follow == null)
+        if (vcam == null) return;
+
+        if (vcam.Follow != null) return;
+
+        if (NetworkManager.Singleton != null && NetworkManager.Singleton.IsConnectedClient)
         {
-            // 1. Verificamos que el multijugador esté activo y estemos conectados
-            if (NetworkManager.Singleton != null && NetworkManager.Singleton.IsConnectedClient)
+            var jugadorLocal = NetworkManager.Singleton.LocalClient.PlayerObject;
+
+            if (jugadorLocal != null)
             {
-                // 2. MAGIA: Obtenemos ÚNICAMENTE el personaje que nos pertenece a nosotros
-                var localPlayerObject = NetworkManager.Singleton.LocalClient.PlayerObject;
+                Transform puntoCamara = jugadorLocal.transform.Find("PlayerCameraRoot");
 
-                if (localPlayerObject != null)
+                if (puntoCamara != null)
                 {
-                    // 3. Buscamos la raíz de la cámara dentro de NUESTRO jugador
-                    Transform cameraRoot = localPlayerObject.transform.Find("PlayerCameraRoot");
+                    vcam.Follow = puntoCamara;
 
-                    if (cameraRoot != null)
-                    {
-                        vcam.Follow = cameraRoot;
-                        vcam.LookAt = cameraRoot;
-                    }
+                    // ESTA ES LA MAGIA: Le dice a la cámara que se teletransporte de golpe, sin animaciones chistosas
+                    vcam.PreviousStateIsValid = false;
                 }
             }
         }
