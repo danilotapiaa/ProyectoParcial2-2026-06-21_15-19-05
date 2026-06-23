@@ -4,33 +4,37 @@ using Unity.Cinemachine;
 
 public class AutoAssignCamera : MonoBehaviour
 {
-    private CinemachineCamera vcam;
+    private CinemachineCamera camara;
 
     void Start()
     {
-        vcam = GetComponent<CinemachineCamera>();
+        camara = GetComponent<CinemachineCamera>();
     }
 
     void Update()
     {
-        if (vcam == null) return;
-
-        if (vcam.Follow != null) return;
-
-        if (NetworkManager.Singleton != null && NetworkManager.Singleton.IsConnectedClient)
+        if (camara != null && camara.Target.TrackingTarget == null)
         {
-            var jugadorLocal = NetworkManager.Singleton.LocalClient.PlayerObject;
-
-            if (jugadorLocal != null)
+            if (NetworkManager.Singleton != null && NetworkManager.Singleton.IsConnectedClient)
             {
-                Transform puntoCamara = jugadorLocal.transform.Find("PlayerCameraRoot");
+                var jugadorLocal = NetworkManager.Singleton.LocalClient.PlayerObject;
 
-                if (puntoCamara != null)
+                if (jugadorLocal != null)
                 {
-                    vcam.Follow = puntoCamara;
+                    Transform[] huesos = jugadorLocal.GetComponentsInChildren<Transform>();
+                    foreach (Transform hueso in huesos)
+                    {
+                        if (hueso.name == "PlayerCameraRoot")
+                        {
+                            camara.Target.TrackingTarget = hueso;
 
-                    // ESTA ES LA MAGIA: Le dice a la cámara que se teletransporte de golpe, sin animaciones chistosas
-                    vcam.PreviousStateIsValid = false;
+                            // ¡LA MAGIA!: Obliga a la cámara a teletransportarse sin volar a través de las paredes al inicio
+                            camara.PreviousStateIsValid = false;
+
+                            Debug.Log("¡Cámara teletransportada al cuello correctamente!");
+                            break;
+                        }
+                    }
                 }
             }
         }
